@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>สรุปรายการเรียกเก็บ</title>
+  <!-- นำเข้าฟอนต์ Prompt -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --border-color: #e5e7eb;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #10b981;
+      --success-hover: #059669;
+    }
+    body { 
+      font-family: 'Prompt', sans-serif; 
+      background: var(--bg-color); 
+      color: var(--text-main);
+      padding: 20px; 
+      margin: 0;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-weight: 600; color: #111827; }
+    h2 { font-weight: 500; font-size: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
+    
+    .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .btn { padding: 10px 16px; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; border: none; transition: 0.2s; font-family: inherit; }
+    .btn-nav { background: white; color: var(--primary); text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .btn-nav:hover { background: #f8fafc; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { background: var(--danger); color: white; padding: 6px 12px; font-size: 14px; }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .btn-export { background: var(--success); color: white; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4); }
+    .btn-export:hover { background: var(--success-hover); transform: translateY(-2px); }
+
+    .card { background: var(--card-bg); border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-bottom: 24px; }
+    
+    .add-form { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"], input[type="number"] { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 15px; font-family: inherit; outline: none; }
+    input[type="text"]:focus, input[type="number"]:focus { border-color: var(--primary); }
+    .add-form input[name="name"] { flex: 1; }
+    
+    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 15px; }
+    th, td { padding: 14px 12px; border-bottom: 1px solid var(--border-color); text-align: center; }
+    th { background: #f9fafb; color: var(--text-muted); font-weight: 500; font-size: 14px; }
+    td:first-child, th:first-child { text-align: left; }
+    .price-input { width: 110px; text-align: right; }
+    .months-input { width: 50px; text-align: center; }
+    .installment-box { margin-top: 8px; font-size: 14px; }
+    .installment-box.hidden { display: none; }
+    .remaining { display: block; font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .empty { color: var(--text-muted); text-align: center !important; padding: 30px !important; }
+    
+    .sub-total { text-align: right; font-weight: 600; color: var(--text-muted); margin-top: 15px; font-size: 16px; }
+    .grand-total-card { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; text-align: center; border-radius: 12px; padding: 30px; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3); margin-top: 10px; }
+    .grand-total-card h2 { border: none; margin: 0 0 10px 0; padding: 0; color: #bfdbfe; font-size: 20px; }
+    .grand-total-amount { font-size: 42px; font-weight: 700; margin: 0; letter-spacing: -1px; }
+
+    #capture-area { padding: 20px; background: var(--bg-color); border-radius: 16px; }
+    
+    /* สไตล์เฉพาะตอน Export ภาพ (เปลี่ยนช่องกรอกให้กลายเป็นข้อความธรรมดา) */
+    #capture-area.is-exporting { background: white; padding: 40px; }
+    #capture-area.is-exporting .card { box-shadow: none; border: 1px solid #e5e7eb; }
+    #capture-area.is-exporting input[type="number"], 
+    #capture-area.is-exporting input[type="text"] {
+      border: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      font-weight: 600;
+      color: #111827;
+      text-align: center;
+      -webkit-appearance: none;
+      pointer-events: none;
+    }
+    #capture-area.is-exporting .price-input { text-align: right; }
+    #capture-area.is-exporting input[type="checkbox"] { display: none; } /* ซ่อน Checkbox ตอนแคป */
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav-bar">
+      <a href="/" class="btn-nav">← กลับหน้าหลัก</a>
+      <button class="btn btn-export" onclick="exportToJPG()">📸 บันทึกเป็นรูปภาพ (JPG)</button>
+    </div>
+
+    <!-- กรอบส่วนที่จะแคปรูป -->
+    <div id="capture-area">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="margin-bottom: 5px;">สรุปรายการเรียกเก็บประจำเดือน</h1>
+        <p style="color: var(--text-muted); margin-top: 0;">สรุปยอดเรียกเก็บและรายการสำรองจ่าย</p>
+      </div>
+
+      <!-- ===== ตารางที่ 1: รายการเรียกเก็บ ===== -->
+      <div class="card">
+        <h2>รายการเรียกเก็บหลัก</h2>
+        <form class="add-form no-export" method="POST" action="/billing/extra/add">
+          <input type="text" name="name" placeholder="ชื่อรายการเรียกเก็บใหม่..." required>
+          <input type="number" name="price" placeholder="ราคา (บาท)" step="0.01" min="0">
+          <button type="submit" class="btn btn-primary">+ เพิ่ม</button>
+        </form>
+
+        <form method="POST" action="/billing/extra/update">
+          <table>
+            <tr>
+              <th>รายการ</th>
+              <th>ยอดเรียกเก็บ (บาท)</th>
+              <th>สถานะการผ่อน</th>
+              <th class="action-col no-export"></th>
+            </tr>
+
+            {% for item in split_items %}
+            <tr>
+              <td style="font-weight: 500;">
+                {{ item.name }}
+                <span class="remaining">แบ่งจ่าย ÷ 2 (ดึงจากหน้าหลัก)</span>
+              </td>
+              <td style="font-weight: 600;">{{ "{:,.2f}".format(item.price / 2) }}</td>
+              <td>
+                {% if item.installment %}
+                  ผ่อนแล้ว {{ item.months_paid }} / {{ item.months_total }}
+                  <span class="remaining">เหลืออีก {{ item.months_total - item.months_paid }} เดือน</span>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="action-col no-export"></td>
+            </tr>
+            {% endfor %}
+
+            <tr>
+              <td style="font-weight: 500;">
+                ค่าน้ำมัน
+                <span class="remaining">คิดเป็น {{ '%g'|format(fuel_percent) }}% (ดึงจากหน้าหลัก)</span>
+              </td>
+              <td style="font-weight: 600;">{{ "{:,.2f}".format(fuel_bill) }}</td>
+              <td>-</td>
+              <td class="action-col no-export"></td>
+            </tr>
+
+            {% for item in extra %}
+            <tr>
+              <td style="font-weight: 500;">{{ item.name }}</td>
+              <td>
+                <input class="price-input" type="number" name="price_{{ loop.index0 }}" value="{{ '%.2f'|format(item.price) }}" step="0.01" min="0">
+              </td>
+              <td>
+                <label class="no-export" style="cursor: pointer; display: block;">
+                  <input type="checkbox" class="installment-toggle" name="installment_{{ loop.index0 }}" data-target="months-extra-{{ loop.index0 }}" {% if item.installment %}checked{% endif %}> มีการผ่อน
+                </label>
+                <div class="installment-box{% if not item.installment %} hidden{% endif %}" id="months-extra-{{ loop.index0 }}">
+                  <input class="months-input" type="number" name="months_paid_{{ loop.index0 }}" value="{{ item.months_paid }}" min="0">
+                  /
+                  <input class="months-input" type="number" name="months_total_{{ loop.index0 }}" value="{{ item.months_total }}" min="1">
+                  <span class="remaining">เหลืออีก {{ item.months_total - item.months_paid }} เดือน</span>
+                </div>
+              </td>
+              <td class="action-col no-export">
+                <button type="submit" form="delete-extra-{{ loop.index0 }}" class="btn btn-danger">ลบ</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+          {% if extra %}
+          <div class="no-export" style="text-align: right;">
+            <button type="submit" class="btn btn-primary">💾 บันทึก</button>
+          </div>
+          {% endif %}
+        </form>
+        <p class="sub-total">ยอดย่อยเรียกเก็บ: {{ "{:,.2f}".format(total_billing) }} บาท</p>
+      </div>
+
+      {% for item in extra %}
+      <form class="no-export" id="delete-extra-{{ loop.index0 }}" method="POST" action="/billing/extra/delete/{{ loop.index0 }}" style="display:none;"></form>
+      {% endfor %}
+
+      <!-- ===== ตารางที่ 2: รายการสำรองจ่าย ===== -->
+      <div class="card">
+        <h2>รายการสำรองจ่าย</h2>
+        <form class="add-form no-export" method="POST" action="/billing/advance/add">
+          <input type="text" name="name" placeholder="ชื่อรายการสำรองจ่าย..." required>
+          <input type="number" name="price" placeholder="ราคา (ติดลบได้)" step="0.01">
+          <button type="submit" class="btn btn-primary">+ เพิ่ม</button>
+        </form>
+
+        <form method="POST" action="/billing/advance/update">
+          <table>
+            <tr>
+              <th>รายการ</th>
+              <th>ราคาเต็ม (บาท)</th>
+              <th class="no-export">ตัวเลือก</th>
+              <th>ราคาเรียกเก็บ</th>
+              <th class="action-col no-export"></th>
+            </tr>
+            {% for item in advances %}
+            <tr>
+              <td style="font-weight: 500;">
+                {{ item.name }}
+                {% if item.divide %}<span class="remaining export-only-text" style="display:none;">(หาร 2)</span>{% endif %}
+              </td>
+              <td>
+                <input class="price-input" type="number" name="price_{{ loop.index0 }}" value="{{ '%.2f'|format(item.price) }}" step="0.01">
+              </td>
+              <td class="no-export">
+                <label style="cursor: pointer;"><input type="checkbox" name="divide_{{ loop.index0 }}" {% if item.divide %}checked{% endif %}> หาร 2</label>
+              </td>
+              <td style="font-weight: 600; color: var(--primary);">{{ "{:,.2f}".format((item.price / 2) if item.divide else item.price) }}</td>
+              <td class="action-col no-export">
+                <button type="submit" form="delete-advance-{{ loop.index0 }}" class="btn btn-danger">ลบ</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="empty">ยังไม่มีรายการสำรองจ่าย</td></tr>
+            {% endfor %}
+          </table>
+          {% if advances %}
+          <div class="no-export" style="text-align: right;">
+            <button type="submit" class="btn btn-primary">💾 บันทึก</button>
+          </div>
+          {% endif %}
+        </form>
+        <p class="sub-total">ยอดย่อยสำรองจ่าย: {{ "{:,.2f}".format(total_advance) }} บาท</p>
+      </div>
+
+      {% for item in advances %}
+      <form class="no-export" id="delete-advance-{{ loop.index0 }}" method="POST" action="/billing/advance/delete/{{ loop.index0 }}" style="display:none;"></form>
+      {% endfor %}
+
+      <!-- ยอดรวมสุทธิ -->
+      <div class="grand-total-card">
+        <h2>ยอดเรียกเก็บสุทธิ (รวมสำรองจ่าย)</h2>
+        <p class="grand-total-amount">{{ "{:,.2f}".format(grand_total) }} <span>บาท</span></p>
+      </div>
+
+    </div> <!-- จบกรอบ capture-area -->
+  </div>
+
+  <script>
+    document.addEventListener('change', function (e) {
+      if (!e.target.classList.contains('installment-toggle')) return;
+      var box = document.getElementById(e.target.dataset.target);
+      box.classList.toggle('hidden', !e.target.checked);
+    });
+
+    // ฟังก์ชัน Export JPG แบบสวยงาม
+    function exportToJPG() {
+      const target = document.getElementById('capture-area');
+      const hideElements = target.querySelectorAll('.no-export');
+      const showTexts = target.querySelectorAll('.export-only-text');
+      
+      // จัดการ UI สำหรับแคปรูป
+      target.classList.add('is-exporting'); // ใส่ class เพื่อให้ CSS เปลี่ยน input เป็นข้อความ
+      hideElements.forEach(el => el.style.display = 'none');
+      showTexts.forEach(el => el.style.display = 'inline');
+      
+      // หน่วงเวลาเล็กน้อยให้หน้าเว็บอัปเดต CSS ก่อนแคป
+      setTimeout(() => {
+        html2canvas(target, { 
+            scale: 2,
+            backgroundColor: "#ffffff",
+            useCORS: true
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'สรุปยอดเรียกเก็บประจำเดือน.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 1.0);
+            link.click();
+            
+            // คืนค่า UI กลับเป็นปกติ
+            target.classList.remove('is-exporting');
+            hideElements.forEach(el => el.style.display = '');
+            showTexts.forEach(el => el.style.display = 'none');
+        });
+      }, 100);
+    }
+  </script>
+</body>
+</html>

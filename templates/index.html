@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - รายจ่ายประจำเดือน</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Sarabun', sans-serif; color: #333; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: #ffffff; }
+        .card-header-custom { border-bottom: 2px solid #f1f3f5; background: transparent; padding-bottom: 12px; }
+        .table-input { border: 1px solid #ced4da; border-radius: 6px; padding: 4px 8px; font-size: 0.9rem; }
+        .btn-custom { border-radius: 8px; font-weight: 600; padding: 6px 16px; }
+        .badge-status { font-size: 0.8rem; padding: 5px 10px; border-radius: 6px; }
+    </style>
+</head>
+<body class="py-4">
+    <div class="container" style="max-width: 950px;">
+        
+        <!-- Header Nav -->
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div>
+                <h2 class="fw-bold m-0 text-primary">💳 Expense Tracker</h2>
+                <small class="text-muted">ระบบจัดการรายจ่ายประจำเดือน & ค่าน้ำมัน</small>
+            </div>
+            <div>
+                <a href="{{ url_for('home') }}" class="btn btn-primary btn-custom shadow-sm">🏠 หน้าหลัก</a>
+                <a href="{{ url_for('billing') }}" class="btn btn-outline-primary btn-custom ms-1">🧾 หน้ารายการเรียกเก็บ</a>
+            </div>
+        </div>
+
+        <!-- 1. เพิ่มรายการรายจ่ายใหม่ -->
+        <div class="card p-4 mb-4">
+            <h5 class="fw-bold mb-3 card-header-custom text-dark">➕ เพิ่มรายการรายจ่ายใหม่</h5>
+            <form action="{{ url_for('add') }}" method="POST" class="row g-2">
+                <div class="col-md-6">
+                    <input type="text" name="name" class="form-control table-input" placeholder="ชื่อรายการ..." required>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" step="0.01" name="price" class="form-control table-input" placeholder="จำนวนเงิน (บาท)..." required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success btn-custom w-100">เพิ่มรายการ</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 2. ตารางรายการรายจ่ายหลัก -->
+        <div class="card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 card-header-custom">
+                <h5 class="fw-bold m-0 text-dark">📋 รายการรายจ่ายหลัก</h5>
+                <span class="badge bg-primary badge-status">ประจำเดือน</span>
+            </div>
+            
+            <form action="{{ url_for('update') }}" method="POST">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light text-secondary">
+                            <tr>
+                                <th style="width: 8%;">จ่ายแล้ว</th>
+                                <th style="width: 25%;">ชื่อรายการ</th>
+                                <th style="width: 18%;">ราคา (บาท)</th>
+                                <th style="width: 10%;">หาร 2</th>
+                                <th style="width: 10%;">ผ่อนชำระ</th>
+                                <th style="width: 10%;">งวดปัจจุบัน</th>
+                                <th style="width: 10%;">งวดทั้งหมด</th>
+                                <th style="width: 9%;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in expenses %}
+                            <tr>
+                                <td class="text-center">
+                                    <input type="checkbox" name="paid_{{ loop.index0 }}" class="form-check-input" style="width: 1.2rem; height: 1.2rem;" {% if item.paid %}checked{% endif %}>
+                                </td>
+                                <td>
+                                    <span class="fw-bold {% if item.paid %}text-decoration-line-through text-muted{% else %}text-dark{% endif %}">
+                                        {{ item.name }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" name="price_{{ loop.index0 }}" value="{{ item.price }}" class="form-control form-control-sm table-input" style="width: 110px;">
+                                </td>
+                                <td class="text-center">
+                                    <input type="checkbox" name="split_{{ loop.index0 }}" class="form-check-input" {% if item.split %}checked{% endif %}>
+                                </td>
+                                <td class="text-center">
+                                    <input type="checkbox" name="installment_{{ loop.index0 }}" class="form-check-input" {% if item.installment %}checked{% endif %}>
+                                </td>
+                                <td class="text-center">
+                                    {% if item.installment %}
+                                        <input type="number" name="months_paid_{{ loop.index0 }}" value="{{ item.months_paid }}" class="form-control form-control-sm table-input text-center" style="width: 65px; margin: 0 auto;">
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                        <input type="hidden" name="months_paid_{{ loop.index0 }}" value="{{ item.months_paid }}">
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if item.installment %}
+                                        <input type="number" name="months_total_{{ loop.index0 }}" value="{{ item.months_total }}" class="form-control form-control-sm table-input text-center" style="width: 65px; margin: 0 auto;">
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                        <input type="hidden" name="months_total_{{ loop.index0 }}" value="{{ item.months_total }}">
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="submit" formAction="{{ url_for('delete', index=loop.index0) }}" formMethod="POST" class="btn btn-sm btn-outline-danger btn-custom" onclick="return confirm('ยืนยันลบรายการนี้?');">ลบ</button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">ยังไม่มีรายการรายจ่าย</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <button type="submit" class="btn btn-primary btn-custom shadow-sm">💾 บันทึกการเปลี่ยนแปลง</button>
+                </div>
+            </form>
+
+            <hr class="my-4">
+
+            <!-- ฟอร์มปุ่มขึ้นเดือนใหม่ (ปุ่มเดียวจัดการครบทุกส่วน) -->
+            <div class="d-flex justify-content-end">
+                <form action="{{ url_for('next_month') }}" method="POST" onsubmit="return confirm('คุณต้องการเริ่มเดือนต่อไปใช่หรือไม่?\n- ถอดติ๊กจ่ายแล้วออกทั้งหมด\n- บวกงวดผ่อน +1 (หน้าหลัก & หน้าเรียกเก็บ)\n- ลบรายการผ่อนที่ชำระครบแล้วออก\n- ลบรายการสำรองจ่ายทั้งหมดออก\n- ลลบประวัติบันทึกค่าน้ำมันทั้งหมด');">
+                    <button type="submit" class="btn btn-warning btn-custom shadow-sm text-dark fw-bold">
+                        🗓️ ขึ้นเดือนต่อไป
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. ค่าน้ำมัน -->
+        <div class="card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 card-header-custom">
+                <h5 class="fw-bold m-0 text-dark">⛽ บันทึกค่าน้ำมัน</h5>
+                <span class="badge bg-info text-dark badge-status">รวมค่าน้ำมัน: {{ "%.2f"|format(fuel_total) }} บาท</span>
+            </div>
+            
+            <form action="{{ url_for('fuel_percent') }}" method="POST" class="row g-2 align-items-center mb-3">
+                <div class="col-auto">
+                    <label class="col-form-label fw-bold">สัดส่วนเรียกเก็บ (%):</label>
+                </div>
+                <div class="col-auto">
+                    <input type="number" step="0.1" name="percent" value="{{ fuel_percent }}" class="form-control form-control-sm table-input" style="width: 80px;">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-secondary btn-custom">บันทึก %</button>
+                </div>
+            </form>
+
+            <form action="{{ url_for('fuel_update') }}" method="POST">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light text-secondary">
+                            <tr>
+                                <th style="width: 25%;">วันที่</th>
+                                <th style="width: 45%;">หมายเหตุ</th>
+                                <th style="width: 20%;">จำนวนเงิน (บาท)</th>
+                                <th style="width: 10%;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in fuel_logs %}
+                            <tr>
+                                <td>
+                                    <input type="date" name="date_{{ loop.index0 }}" value="{{ log.date }}" class="form-control form-control-sm table-input">
+                                </td>
+                                <td>
+                                    <input type="text" name="note_{{ loop.index0 }}" value="{{ log.note }}" class="form-control form-control-sm table-input">
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" name="amount_{{ loop.index0 }}" value="{{ log.amount }}" class="form-control form-control-sm table-input">
+                                </td>
+                                <td>
+                                    <button type="submit" formAction="{{ url_for('fuel_delete', index=loop.index0) }}" formMethod="POST" class="btn btn-sm btn-outline-danger btn-custom" onclick="return confirm('ยืนยันลบรายการนี้?');">ลบ</button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">ยังไม่มีรายการค่าน้ำมันในเดือนนี้</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if fuel_logs %}
+                <button type="submit" class="btn btn-sm btn-primary btn-custom mt-2">บันทึกรายการน้ำมัน</button>
+                {% endif %}
+            </form>
+
+            <hr class="my-3">
+
+            <form action="{{ url_for('fuel_add') }}" method="POST" class="row g-2">
+                <div class="col-md-3">
+                    <input type="date" name="date" value="{{ today }}" class="form-control form-control-sm table-input" required>
+                </div>
+                <div class="col-md-5">
+                    <input type="text" name="note" class="form-control form-control-sm table-input" placeholder="หมายเหตุ (เช่น เติม ปตท.)...">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" step="0.01" name="amount" class="form-control form-control-sm table-input" placeholder="จำนวนเงิน..." required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-success btn-custom w-100">เพิ่มน้ำมัน</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</body>
+</html>
